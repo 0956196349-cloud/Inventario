@@ -1,6 +1,7 @@
 
 const INVENTARIO_URL = "https://inventario-qivs.onrender.com"; 
-const VENTAS_URL     = "http://localhost:8001";               
+const VENTAS_URL = "https://ventas-4b2b.onrender.com";
+           
 
 async function checkHealth(baseUrl, badgeId, name) {
   const el = document.getElementById(badgeId);
