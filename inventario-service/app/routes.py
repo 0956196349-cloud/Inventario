@@ -1,10 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field
+from typing import List
+
 from app.database import SessionLocal
 from app import models, schemas
-from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/inventario", tags=["Inventario"])
+
 
 def get_db():
     db = SessionLocal()
@@ -15,7 +18,8 @@ def get_db():
 
 
 class StockChange(BaseModel):
-    cantidad: int = Field(gt=0)
+    cantidad: int = Field(gt=0, description="Cantidad mayor a 0")
+
 
 @router.post("/", response_model=schemas.InventarioResponse)
 def crear_item(item: schemas.InventarioCreate, db: Session = Depends(get_db)):
@@ -25,9 +29,11 @@ def crear_item(item: schemas.InventarioCreate, db: Session = Depends(get_db)):
     db.refresh(nuevo)
     return nuevo
 
-@router.get("/", response_model=list[schemas.InventarioResponse])
+
+@router.get("/", response_model=List[schemas.InventarioResponse])
 def listar_items(db: Session = Depends(get_db)):
     return db.query(models.Inventario).all()
+
 
 @router.get("/{item_id}", response_model=schemas.InventarioResponse)
 def obtener_item(item_id: int, db: Session = Depends(get_db)):
@@ -36,21 +42,26 @@ def obtener_item(item_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Item no encontrado")
     return item
 
-@router.patch("/{item_id}/disminuir")
+
+@router.patch("/{item_id}/disminuir", response_model=schemas.InventarioResponse)
 def disminuir_stock(item_id: int, payload: StockChange, db: Session = Depends(get_db)):
     item = db.query(models.Inventario).filter(models.Inventario.id == item_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Item no encontrado")
 
     if item.cantidad < payload.cantidad:
-        raise HTTPException(status_code=400, detail=f"Stock insuficiente. Stock actual: {item.cantidad}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Stock insuficiente. Stock actual: {item.cantidad}",
+        )
 
     item.cantidad -= payload.cantidad
     db.commit()
     db.refresh(item)
-    return {"id": item.id, "nuevo_stock": item.cantidad}
+    return item
 
-@router.patch("/{item_id}/aumentar")
+
+@router.patch("/{item_id}/aumentar", response_model=schemas.InventarioResponse)
 def aumentar_stock(item_id: int, payload: StockChange, db: Session = Depends(get_db)):
     item = db.query(models.Inventario).filter(models.Inventario.id == item_id).first()
     if not item:
@@ -59,4 +70,4 @@ def aumentar_stock(item_id: int, payload: StockChange, db: Session = Depends(get
     item.cantidad += payload.cantidad
     db.commit()
     db.refresh(item)
-    return {"id": item.id, "nuevo_stock": item.cantidad}
+    return item

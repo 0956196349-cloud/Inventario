@@ -1,4 +1,8 @@
+from typing import Optional
 from pydantic import BaseModel
+
+class StockUpdate(BaseModel):
+    cantidad: int
 
 class InventarioBase(BaseModel):
     nombre: str
