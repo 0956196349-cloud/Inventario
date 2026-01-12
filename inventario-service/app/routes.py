@@ -1,0 +1,62 @@
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.database import SessionLocal
+from app import models, schemas
+from pydantic import BaseModel, Field
+
+router = APIRouter(prefix="/inventario", tags=["Inventario"])
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+class StockChange(BaseModel):
+    cantidad: int = Field(gt=0)
+
+@router.post("/", response_model=schemas.InventarioResponse)
+def crear_item(item: schemas.InventarioCreate, db: Session = Depends(get_db)):
+    nuevo = models.Inventario(**item.dict())
+    db.add(nuevo)
+    db.commit()
+    db.refresh(nuevo)
+    return nuevo
+
+@router.get("/", response_model=list[schemas.InventarioResponse])
+def listar_items(db: Session = Depends(get_db)):
+    return db.query(models.Inventario).all()
+
+@router.get("/{item_id}", response_model=schemas.InventarioResponse)
+def obtener_item(item_id: int, db: Session = Depends(get_db)):
+    item = db.query(models.Inventario).filter(models.Inventario.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item no encontrado")
+    return item
+
+@router.patch("/{item_id}/disminuir")
+def disminuir_stock(item_id: int, payload: StockChange, db: Session = Depends(get_db)):
+    item = db.query(models.Inventario).filter(models.Inventario.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item no encontrado")
+
+    if item.cantidad < payload.cantidad:
+        raise HTTPException(status_code=400, detail=f"Stock insuficiente. Stock actual: {item.cantidad}")
+
+    item.cantidad -= payload.cantidad
+    db.commit()
+    db.refresh(item)
+    return {"id": item.id, "nuevo_stock": item.cantidad}
+
+@router.patch("/{item_id}/aumentar")
+def aumentar_stock(item_id: int, payload: StockChange, db: Session = Depends(get_db)):
+    item = db.query(models.Inventario).filter(models.Inventario.id == item_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Item no encontrado")
+
+    item.cantidad += payload.cantidad
+    db.commit()
+    db.refresh(item)
+    return {"id": item.id, "nuevo_stock": item.cantidad}
