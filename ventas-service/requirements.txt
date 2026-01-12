@@ -4,3 +4,10 @@ httpx
 pydantic
 python-dotenv
 requests
+sqlalchemy
+cryptography
+alembic
+psycopg2-binary
+pytest
+pytest-asyncio
+pytest-cov
