@@ -7,6 +7,7 @@ from app.database import SessionLocal
 from app import models, schemas
 
 router = APIRouter(prefix="/inventario", tags=["Inventario"])
+router = APIRouter(prefix="/pki", tags=["PKI"])
 
 
 def get_db():
@@ -19,6 +20,10 @@ def get_db():
 
 class StockChange(BaseModel):
     cantidad: int = Field(gt=0, description="Cantidad mayor a 0")
+
+
+class CertVerifyRequest(BaseModel):
+    certificate_pem: str
 
 
 @router.post("/", response_model=schemas.InventarioResponse)
@@ -71,3 +76,18 @@ def aumentar_stock(item_id: int, payload: StockChange, db: Session = Depends(get
     db.commit()
     db.refresh(item)
     return item
+
+
+@router.post("/verify-certificate")
+def verify_certificate(payload: CertVerifyRequest):
+    try:
+        cert = load_cert_from_pem(payload.certificate_pem)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Certificado PEM inválido o corrupto.")
+
+    checks = basic_cert_checks(cert)
+    return {
+        "valid": checks["ok"],
+        "reason": checks.get("reason"),
+        "info": cert_summary(cert),
+    }

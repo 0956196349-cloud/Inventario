@@ -1,72 +1,66 @@
 import os
-import httpx
+import requests
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any
-from datetime import datetime
-from dotenv import load_dotenv
-
-load_dotenv()
 
 app = FastAPI(title="Microservicio Ventas - TIGO", version="1.0")
 
-INVENTARIO_URL = os.getenv("INVENTARIO_URL", "http://localhost:8000")
+INVENTARIO_URL = os.getenv("INVENTARIO_URL", "https://inventario-qivs.onrender.com").rstrip("/")
+TIMEOUT = float(os.getenv("REQUEST_TIMEOUT", "15"))
 
-# “BD” en memoria (simple para demo)
-SALES: List[Dict[str, Any]] = []
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-class SaleItem(BaseModel):
-    item_id: int
+class VentaCreate(BaseModel):
+    producto_id: int = Field(gt=0)
     cantidad: int = Field(gt=0)
-
-class SaleCreate(BaseModel):
-    cliente: str
-    items: List[SaleItem]
 
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "ventas"}
 
-@app.get("/ventas")
-def listar_ventas():
-    return SALES
-
 @app.post("/ventas")
-async def crear_venta(payload: SaleCreate):
-    async with httpx.AsyncClient(timeout=10) as client:
-        # 1) Validar stock consultando inventario
-        for it in payload.items:
-            r = await client.get(f"{INVENTARIO_URL}/inventario/{it.item_id}")
-            if r.status_code == 404:
-                raise HTTPException(status_code=404, detail=f"Item {it.item_id} no existe en inventario")
-            if r.status_code != 200:
-                raise HTTPException(status_code=502, detail="Error consultando inventario")
+def crear_venta(venta: VentaCreate):
+    try:
+        r = requests.get(f"{INVENTARIO_URL}/inventario/{venta.producto_id}", timeout=TIMEOUT)
+    except requests.RequestException:
+        raise HTTPException(status_code=502, detail="No se pudo conectar con Inventario")
 
-            item = r.json()
-            stock = item.get("cantidad", 0)
+    if r.status_code == 404:
+        raise HTTPException(status_code=404, detail="Producto no existe en Inventario")
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Inventario respondió con error ({r.status_code})")
 
-            if stock < it.cantidad:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Stock insuficiente para item {it.item_id}. Stock={stock}, solicitado={it.cantidad}"
-                )
+    producto = r.json()
+    stock = int(producto.get("cantidad", 0))
 
-        # 2) Descontar stock en inventario
-        for it in payload.items:
-            r2 = await client.patch(
-                f"{INVENTARIO_URL}/inventario/{it.item_id}/disminuir",
-                json={"cantidad": it.cantidad},
-            )
-            if r2.status_code != 200:
-                raise HTTPException(status_code=502, detail="No se pudo descontar stock en inventario")
+    if stock < venta.cantidad:
+        raise HTTPException(status_code=400, detail=f"Stock insuficiente. Stock actual: {stock}")
 
-    # 3) Guardar venta (en memoria)
-    venta = {
-        "id": len(SALES) + 1,
-        "cliente": payload.cliente,
-        "items": [i.dict() for i in payload.items],
-        "fecha": datetime.utcnow().isoformat() + "Z",
+    try:
+        r2 = requests.patch(
+            f"{INVENTARIO_URL}/inventario/{venta.producto_id}/disminuir",
+            json={"cantidad": venta.cantidad},
+            timeout=TIMEOUT
+        )
+    except requests.RequestException:
+        raise HTTPException(status_code=502, detail="Error al descontar stock en Inventario")
+
+    if r2.status_code == 404:
+        raise HTTPException(status_code=404, detail="Producto no encontrado al descontar stock")
+    if r2.status_code == 400:
+        raise HTTPException(status_code=400, detail=r2.json().get("detail", "Stock insuficiente"))
+    if r2.status_code != 200:
+        raise HTTPException(status_code=502, detail=f"Inventario no pudo actualizar el stock ({r2.status_code})")
+
+    return {
+        "message": "Venta registrada y stock actualizado",
+        "venta": {"producto_id": venta.producto_id, "cantidad": venta.cantidad},
+        "producto_actualizado": r2.json()
     }
-    SALES.append(venta)
-
-    return {"message": "Venta creada", "venta": venta}
