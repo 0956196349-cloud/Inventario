@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TIGO - Inventario & Ventas</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    .row { display: flex; gap: 20px; }
+    .card { border: 1px solid #ddd; padding: 15px; border-radius: 10px; width: 50%; }
+    input, button { padding: 8px; margin: 5px 0; width: 100%; }
+    pre { background: #f6f6f6; padding: 10px; border-radius: 8px; overflow:auto; }
+  </style>
+</head>
+<body>
+  <h1>Plataforma Distribuida - Inventario + Ventas (FastAPI)</h1>
+
+  <div class="row">
+    <div class="card">
+      <h2>Inventario</h2>
+      <button onclick="cargarInventario()">Cargar inventario</button>
+
+      <h3>Crear Item</h3>
+      <input id="inv_nombre" placeholder="nombre (ej: Mouse)" />
+      <input id="inv_tipo" placeholder="tipo (ej: Periférico)" />
+      <input id="inv_cantidad" type="number" placeholder="cantidad (ej: 10)" />
+      <input id="inv_estado" placeholder="estado (ej: Activo)" />
+      <button onclick="crearItem()">Crear</button>
+
+      <pre id="inventario_out"></pre>
+    </div>
+
+    <div class="card">
+      <h2>Ventas</h2>
+      <button onclick="cargarVentas()">Cargar ventas</button>
+
+      <h3>Crear Venta</h3>
+      <input id="venta_cliente" placeholder="cliente (ej: Juan Pérez)" />
+      <input id="venta_item_id" type="number" placeholder="ID del item (ej: 1)" />
+      <input id="venta_cantidad" type="number" placeholder="cantidad a vender (ej: 2)" />
+      <button onclick="crearVenta()">Crear venta</button>
+
+      <pre id="ventas_out"></pre>
+    </div>
+  </div>
+
+<script>
+  // Cambia estos puertos si usas otros
+  const INVENTARIO_URL = "http://localhost:8000";
+  const VENTAS_URL = "http://localhost:8001";
+
+  async function cargarInventario() {
+    const r = await fetch(`${INVENTARIO_URL}/inventario/`);
+    const data = await r.json();
+    document.getElementById("inventario_out").textContent = JSON.stringify(data, null, 2);
+  }
+
+  async function crearItem() {
+    const body = {
+      nombre: document.getElementById("inv_nombre").value,
+      tipo: document.getElementById("inv_tipo").value,
+      cantidad: parseInt(document.getElementById("inv_cantidad").value || "0"),
+      estado: document.getElementById("inv_estado").value
+    };
+
+    const r = await fetch(`${INVENTARIO_URL}/inventario/`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body)
+    });
+
+    const data = await r.json();
+    document.getElementById("inventario_out").textContent = JSON.stringify(data, null, 2);
+    await cargarInventario();
+  }
+
+  async function cargarVentas() {
+    const r = await fetch(`${VENTAS_URL}/ventas`);
+    const data = await r.json();
+    document.getElementById("ventas_out").textContent = JSON.stringify(data, null, 2);
+  }
+
+  async function crearVenta() {
+    const body = {
+      cliente: document.getElementById("venta_cliente").value,
+      items: [{
+        item_id: parseInt(document.getElementById("venta_item_id").value || "0"),
+        cantidad: parseInt(document.getElementById("venta_cantidad").value || "0")
+      }]
+    };
+
+    const r = await fetch(`${VENTAS_URL}/ventas`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify(body)
+    });
+
+    const data = await r.json();
+    document.getElementById("ventas_out").textContent = JSON.stringify(data, null, 2);
+
+    // refrescar inventario para ver el stock actualizado
+    await cargarInventario();
+  }
+</script>
+
+</body>
+</html>
