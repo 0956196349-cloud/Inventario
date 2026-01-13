@@ -17,7 +17,6 @@
     <button class="btnSmall" onclick="runHealthChecks()">Revisar estado</button>
   </div>
 
-  <!-- ✅ PKI visible -->
   <div class="card full">
     <h2>Verificación PKI (Certificados)</h2>
 
@@ -38,7 +37,6 @@
   </div>
 
   <div class="row">
-    <!-- INVENTARIO -->
     <div class="card">
       <h2>Inventario</h2>
       <button onclick="cargarInventario()">Cargar inventario</button>
@@ -53,7 +51,6 @@
       <pre id="invOut"></pre>
     </div>
 
-    <!-- VENTAS -->
     <div class="card">
       <h2>Ventas</h2>
 
@@ -86,7 +83,7 @@
         const data = await res.json();
         out.textContent = JSON.stringify(data, null, 2);
       }catch(e){
-        out.textContent = "❌ Error: no se pudo conectar con Inventario";
+        out.textContent = " Error: no se pudo conectar con Inventario";
         console.error(e);
       }
     }
@@ -111,7 +108,7 @@
         const data = await res.json();
         out.textContent = JSON.stringify(data, null, 2);
       }catch(e){
-        out.textContent = "❌ Error al crear item";
+        out.textContent = "Error al crear item";
         console.error(e);
       }
     }
@@ -134,7 +131,7 @@
         const data = await res.json();
         out.textContent = JSON.stringify(data, null, 2);
       }catch(e){
-        out.textContent = "❌ Error al crear venta";
+        out.textContent = " Error al crear venta";
         console.error(e);
       }
     }
@@ -147,7 +144,7 @@
       const caFile = document.getElementById("pkiCa").files?.[0];
 
       if (!certFile){
-        out.textContent = "❌ Debes subir un certificado (obligatorio).";
+        out.textContent = " Debes subir un certificado (obligatorio).";
         return;
       }
 
