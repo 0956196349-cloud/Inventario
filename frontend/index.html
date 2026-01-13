@@ -5,119 +5,65 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>TIGO - Inventario + Ventas</title>
 
-  <style>
-    body{
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background: linear-gradient(135deg,#0b1220,#111827);
-      color: #e5e7eb;
-    }
-    h1{ text-align:center; margin-bottom:18px; }
-
-    .row{ display:flex; gap:20px; align-items:flex-start; }
-    .card{
-      border: 1px solid rgba(255,255,255,.12);
-      padding: 18px;
-      border-radius: 14px;
-      width: 50%;
-      background: rgba(2,6,23,.75);
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
-    }
-    input, button{
-      padding: 10px;
-      margin: 6px 0;
-      width: 100%;
-      border-radius: 10px;
-      border: 1px solid rgba(255,255,255,.15);
-      background: rgba(15,23,42,.6);
-      color: #e5e7eb;
-      outline: none;
-    }
-    button{
-      background: linear-gradient(90deg,#2563eb,#06b6d4);
-      border: none;
-      cursor: pointer;
-      font-weight: 700;
-    }
-    button:hover{ filter: brightness(1.05); }
-
-    pre{
-      background: rgba(15,23,42,.75);
-      padding: 12px;
-      border-radius: 12px;
-      overflow:auto;
-      border: 1px solid rgba(255,255,255,.1);
-      min-height: 90px;
-    }
-
-    .statusbar{
-      display:flex;
-      gap:12px;
-      justify-content:center;
-      margin-bottom:16px;
-      flex-wrap:wrap;
-    }
-    .badge{
-      padding:10px 14px;
-      border-radius:999px;
-      background: rgba(148,163,184,.18);
-      border: 1px solid rgba(255,255,255,.10);
-      font-weight: 700;
-    }
-    .ok{ background: rgba(34,197,94,.25); border-color: rgba(34,197,94,.4); }
-    .fail{ background: rgba(239,68,68,.25); border-color: rgba(239,68,68,.4); }
-
-    .hint{
-      text-align:center;
-      font-size: 13px;
-      opacity:.85;
-      margin-top:8px;
-    }
-  </style>
+  <!-- CSS separado -->
+  <link rel="stylesheet" href="./styles.css">
 </head>
 
 <body>
+
   <h1>VENTAS E INVENTARIO</h1>
 
+  <!-- Barra de estado -->
   <div class="statusbar">
     <div id="invStatus" class="badge">Inventario: ...</div>
     <div id="venStatus" class="badge">Ventas: ...</div>
     <button style="max-width:260px" onclick="runHealthChecks()">Revisar estado</button>
   </div>
 
+  <!-- Contenido principal -->
   <div class="row">
+
+    <!-- INVENTARIO -->
     <div class="card">
       <h2>Inventario</h2>
       <button onclick="cargarInventario()">Cargar inventario</button>
 
       <h3>Crear Item</h3>
-      <input id="nombre" placeholder="Nombre (ej: Mouse)"/>
-      <input id="tipo" placeholder="Tipo (ej: entrada)"/>
-      <input id="cantidad" type="number" placeholder="Cantidad (ej: 50)"/>
-      <input id="estado" placeholder="Estado (ej: activo)"/>
+      <input id="nombre" placeholder="Nombre (ej: Mouse)">
+      <input id="tipo" placeholder="Tipo (ej: entrada)">
+      <input id="cantidad" type="number" placeholder="Cantidad (ej: 50)">
+      <input id="estado" placeholder="Estado (ej: activo)">
 
       <button onclick="crearItem()">Crear</button>
+
       <pre id="invOut"></pre>
     </div>
 
+    <!-- VENTAS -->
     <div class="card">
       <h2>Ventas</h2>
       <button onclick="cargarVentas()">Cargar ventas</button>
 
       <h3>Crear Venta</h3>
-      <input id="cliente" placeholder="Cliente (ej: Juan Pérez)"/>
-      <input id="itemId" type="number" placeholder="ID del item (ej: 1)"/>
-      <input id="cantVenta" type="number" placeholder="Cantidad a vender (ej: 2)"/>
+      <input id="cliente" placeholder="Cliente (ej: Juan Pérez)">
+      <input id="itemId" type="number" placeholder="ID del item (ej: 1)">
+      <input id="cantVenta" type="number" placeholder="Cantidad a vender (ej: 2)">
 
       <button onclick="crearVenta()">Crear venta</button>
+
       <pre id="venOut"></pre>
     </div>
+
   </div>
 
+  <p class="hint">
+    Proyecto distribuido con FastAPI – Inventario y Ventas conectados por API REST
+  </p>
 
-
+  <!-- Configuración de URLs + Health -->
   <script src="./health.js"></script>
 
+  <!-- Lógica principal -->
   <script>
     const INV = () => window.API.INVENTARIO_URL;
     const VEN = () => window.API.VENTAS_URL;
@@ -128,10 +74,12 @@
       try{
         const res = await fetch(`${INV()}/inventario/`);
         const data = await res.json();
-        document.getElementById("invOut").textContent = JSON.stringify(data, null, 2);
+        document.getElementById("invOut").textContent =
+          JSON.stringify(data, null, 2);
       }catch(e){
-        document.getElementById("invOut").textContent = "Error: Failed to fetch (revisa CORS/URL)";
-        console.log(e);
+        document.getElementById("invOut").textContent =
+          "Error: no se pudo conectar con Inventario";
+        console.error(e);
       }
     }
 
@@ -151,22 +99,43 @@
         });
 
         const data = await res.json();
-        document.getElementById("invOut").textContent = JSON.stringify(data, null, 2);
+        document.getElementById("invOut").textContent =
+          JSON.stringify(data, null, 2);
       }catch(e){
-        document.getElementById("invOut").textContent = "Error creando item (Failed to fetch)";
-        console.log(e);
+        document.getElementById("invOut").textContent =
+          "Error al crear item";
+        console.error(e);
       }
     }
 
     async function cargarVentas(){
       document.getElementById("venOut").textContent =
-        "Aquí va el GET de ventas cuando tengas el endpoint listo.";
+        "Endpoint GET /ventas pendiente o no implementado.";
     }
 
     async function crearVenta(){
-      document.getElementById("venOut").textContent =
-        "Aquí va el POST /venta y el descuento de stock cuando lo conectemos.";
+      try{
+        const payload = {
+          producto_id: Number(document.getElementById("itemId").value),
+          cantidad: Number(document.getElementById("cantVenta").value)
+        };
+
+        const res = await fetch(`${VEN()}/ventas`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        document.getElementById("venOut").textContent =
+          JSON.stringify(data, null, 2);
+      }catch(e){
+        document.getElementById("venOut").textContent =
+          "Error al crear venta";
+        console.error(e);
+      }
     }
   </script>
+
 </body>
 </html>
