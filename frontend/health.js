@@ -1,29 +1,31 @@
-
-const INVENTARIO_URL = "https://inventario-qivs.onrender.com"; 
-const VENTAS_URL = "https://ventas-4b2b.onrender.com";
-           
-
-async function checkHealth(baseUrl, badgeId, name) {
-  const el = document.getElementById(badgeId);
-  el.textContent = `${name}: verificando...`;
-  el.className = "badge";
-
-  try {
-    const res = await fetch(`${baseUrl}/health`, { method: "GET" });
-    if (!res.ok) throw new Error("No OK");
-
-    el.textContent = `${name}: activo ✅`;
-    el.classList.add("ok");
-  } catch (e) {
-    el.textContent = `${name}: caído ❌`;
-    el.classList.add("fail");
-    console.log("Health error:", name, e);
-  }
-}
-
-window.runHealthChecks = function () {
-  checkHealth(INVENTARIO_URL, "invStatus", "Inventario");
-  checkHealth(VENTAS_URL, "venStatus", "Ventas");
+window.API = {
+  INVENTARIO_URL: "https://inventario-qivs.onrender.com",
+  VENTAS_URL: "https://ventas-4b2b.onrender.com"
 };
 
-window.API = { INVENTARIO_URL, VENTAS_URL };
+async function runHealthChecks(){
+  const inv = document.getElementById("invStatus");
+  const ven = document.getElementById("venStatus");
+
+  // Inventario
+  try{
+    const r1 = await fetch(`${window.API.INVENTARIO_URL}/health`);
+    const ok = r1.ok;
+    inv.textContent = ok ? "Inventario: OK" : "Inventario: CAÍDO";
+    inv.className = ok ? "badge ok" : "badge fail";
+  }catch{
+    inv.textContent = "Inventario: CAÍDO";
+    inv.className = "badge fail";
+  }
+
+  // Ventas
+  try{
+    const r2 = await fetch(`${window.API.VENTAS_URL}/health`);
+    const ok = r2.ok;
+    ven.textContent = ok ? "Ventas: OK" : "Ventas: CAÍDO";
+    ven.className = ok ? "badge ok" : "badge fail";
+  }catch{
+    ven.textContent = "Ventas: CAÍDO";
+    ven.className = "badge fail";
+  }
+}

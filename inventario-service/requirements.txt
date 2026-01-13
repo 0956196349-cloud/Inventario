@@ -5,5 +5,4 @@ pydantic
 alembic
 psycopg2-binary
 cryptography
-requests
 python-multipart

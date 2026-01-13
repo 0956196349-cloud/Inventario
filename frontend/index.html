@@ -5,24 +5,39 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>TIGO - Inventario + Ventas</title>
 
-  <!-- CSS separado -->
   <link rel="stylesheet" href="./styles.css">
 </head>
 
 <body>
-
   <h1>VENTAS E INVENTARIO</h1>
 
-  <!-- Barra de estado -->
   <div class="statusbar">
     <div id="invStatus" class="badge">Inventario: ...</div>
     <div id="venStatus" class="badge">Ventas: ...</div>
-    <button style="max-width:260px" onclick="runHealthChecks()">Revisar estado</button>
+    <button class="btnSmall" onclick="runHealthChecks()">Revisar estado</button>
   </div>
 
-  <!-- Contenido principal -->
-  <div class="row">
+  <!-- ✅ PKI visible -->
+  <div class="card full">
+    <h2>Verificación PKI (Certificados)</h2>
 
+    <div class="pki-grid">
+      <div>
+        <label class="lbl">Certificado (obligatorio)</label>
+        <input id="pkiCert" type="file" accept=".pem,.crt,.cer">
+      </div>
+
+      <div>
+        <label class="lbl">CA (opcional)</label>
+        <input id="pkiCa" type="file" accept=".pem,.crt,.cer">
+      </div>
+    </div>
+
+    <button onclick="verificarPKI()">Verificar certificado</button>
+    <pre id="pkiOut">Sube un certificado (.pem/.crt) y presiona “Verificar certificado”.</pre>
+  </div>
+
+  <div class="row">
     <!-- INVENTARIO -->
     <div class="card">
       <h2>Inventario</h2>
@@ -35,34 +50,28 @@
       <input id="estado" placeholder="Estado (ej: activo)">
 
       <button onclick="crearItem()">Crear</button>
-
       <pre id="invOut"></pre>
     </div>
 
     <!-- VENTAS -->
     <div class="card">
       <h2>Ventas</h2>
-      <button onclick="cargarVentas()">Cargar ventas</button>
 
       <h3>Crear Venta</h3>
-      <input id="cliente" placeholder="Cliente (ej: Juan Pérez)">
       <input id="itemId" type="number" placeholder="ID del item (ej: 1)">
       <input id="cantVenta" type="number" placeholder="Cantidad a vender (ej: 2)">
 
       <button onclick="crearVenta()">Crear venta</button>
-
       <pre id="venOut"></pre>
     </div>
-
   </div>
 
   <p class="hint">
-    Inventario y ventas</p>
+    Frontend consume microservicios Inventario y Ventas mediante API REST.
+  </p>
 
-  <!-- Configuración de URLs + Health -->
   <script src="./health.js"></script>
 
-  <!-- Lógica principal -->
   <script>
     const INV = () => window.API.INVENTARIO_URL;
     const VEN = () => window.API.VENTAS_URL;
@@ -70,19 +79,21 @@
     window.addEventListener("load", () => runHealthChecks());
 
     async function cargarInventario(){
+      const out = document.getElementById("invOut");
+      out.textContent = "Cargando inventario...";
       try{
         const res = await fetch(`${INV()}/inventario/`);
         const data = await res.json();
-        document.getElementById("invOut").textContent =
-          JSON.stringify(data, null, 2);
+        out.textContent = JSON.stringify(data, null, 2);
       }catch(e){
-        document.getElementById("invOut").textContent =
-          "Error: no se pudo conectar con Inventario";
+        out.textContent = "❌ Error: no se pudo conectar con Inventario";
         console.error(e);
       }
     }
 
     async function crearItem(){
+      const out = document.getElementById("invOut");
+      out.textContent = "Creando item...";
       try{
         const payload = {
           nombre: document.getElementById("nombre").value,
@@ -98,21 +109,16 @@
         });
 
         const data = await res.json();
-        document.getElementById("invOut").textContent =
-          JSON.stringify(data, null, 2);
+        out.textContent = JSON.stringify(data, null, 2);
       }catch(e){
-        document.getElementById("invOut").textContent =
-          "Error al crear item";
+        out.textContent = "❌ Error al crear item";
         console.error(e);
       }
     }
 
-    async function cargarVentas(){
-      document.getElementById("venOut").textContent =
-        "Endpoint GET /ventas pendiente o no implementado.";
-    }
-
     async function crearVenta(){
+      const out = document.getElementById("venOut");
+      out.textContent = "Creando venta...";
       try{
         const payload = {
           producto_id: Number(document.getElementById("itemId").value),
@@ -126,15 +132,49 @@
         });
 
         const data = await res.json();
-        document.getElementById("venOut").textContent =
-          JSON.stringify(data, null, 2);
+        out.textContent = JSON.stringify(data, null, 2);
       }catch(e){
-        document.getElementById("venOut").textContent =
-          "Error al crear venta";
+        out.textContent = "❌ Error al crear venta";
+        console.error(e);
+      }
+    }
+
+    async function verificarPKI(){
+      const out = document.getElementById("pkiOut");
+      out.textContent = "Verificando certificado...";
+
+      const certFile = document.getElementById("pkiCert").files?.[0];
+      const caFile = document.getElementById("pkiCa").files?.[0];
+
+      if (!certFile){
+        out.textContent = "❌ Debes subir un certificado (obligatorio).";
+        return;
+      }
+
+      try{
+        const form = new FormData();
+        form.append("cert", certFile);
+        if (caFile) form.append("ca", caFile);
+
+        const res = await fetch(`${INV()}/pki/verify`, {
+          method: "POST",
+          body: form
+        });
+
+        const data = await res.json();
+
+        if (!res.ok){
+          out.textContent = "❌ Error:\n" + JSON.stringify(data, null, 2);
+          return;
+        }
+
+        out.textContent = "✅ Resultado PKI:\n" + JSON.stringify(data, null, 2);
+
+      }catch(e){
+        out.textContent = "❌ Failed to fetch. Revisa que Inventario esté activo y no esté caído.";
         console.error(e);
       }
     }
   </script>
-
 </body>
 </html>
